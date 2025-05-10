@@ -309,6 +309,96 @@ plt.show()
 
 
 
+#average psnr values
+generator.eval()  # Set generator to evaluation mode
+
+psnr_values = []
+ssim_values = []
+
+with torch.no_grad():
+    for i, (sar, optical) in enumerate(test_loader):
+        sar = sar.to(device)
+        optical = optical.to(device)
+
+        generated_optical = generator(sar)
+
+        real_img = optical[0].cpu().numpy().transpose(1, 2, 0)
+        gen_img = generated_optical[0].cpu().numpy().transpose(1, 2, 0)
+
+        psnr_value = psnr(real_img, gen_img)
+#         ssim_value = ssim(real_img, gen_img, multichannel=True)
+
+        psnr_values.append(psnr_value)
+#         ssim_values.append(ssim_value)
+
+        if i<=10:
+          visualize_results(sar[0], generated_optical[0], optical[0], epoch="Test", step=i)
+
+avg_psnr = sum(psnr_values) / len(psnr_values)
+# avg_ssim = sum(ssim_values) / len(ssim_values)
+
+print(f'Average PSNR: {avg_psnr:.4f}')
+
+
+# Save models
+torch.save(generator.state_dict(), "/content/drive/MyDrive/generator.pth")
+torch.save(discriminator.state_dict(), "/content/drive/MyDrive/discriminator.pth")
+
+
+
+#ROC Curve
+from sklearn.metrics import roc_curve, auc
+
+# Collect true labels and predicted scores
+all_preds = []
+all_labels = []
+
+discriminator.eval()
+with torch.no_grad():
+    for i, (sar, optical) in enumerate(test_loader):
+        sar = sar.to(device)
+        optical = optical.to(device)
+
+        real_output = discriminator(sar, optical).cpu().view(-1).numpy()
+        fake_output = discriminator(sar, generator(sar).detach()).cpu().view(-1).numpy()
+
+        real_labels = [1] * len(real_output)
+        fake_labels = [0] * len(fake_output)
+
+        all_preds.extend(real_output.tolist())
+        all_preds.extend(fake_output.tolist())
+        all_labels.extend(real_labels)
+        all_labels.extend(fake_labels)
+
+# Compute ROC curve and AUC
+fpr, tpr, thresholds = roc_curve(all_labels, all_preds)
+roc_auc = auc(fpr, tpr)
+
+# Plot ROC
+plt.figure(figsize=(6,6))
+plt.plot(fpr, tpr, color='darkorange', lw=2, label='ROC curve (area = %0.4f)' % roc_auc)
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('PatchGAN Discriminator ROC Curve')
+plt.legend(loc="lower right")
+plt.grid(True)
+plt.show()
+
+
+
+
+
+#Histogram
+plt.figure()
+plt.hist(psnr_values, bins=20, color='skyblue', edgecolor='black')
+plt.title('Histogram of PSNR values')
+plt.xlabel('PSNR')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+
 
 
 
