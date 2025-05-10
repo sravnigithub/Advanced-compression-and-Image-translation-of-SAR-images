@@ -297,6 +297,22 @@ for epoch in range(num_epochs):
         visualize_results(sar[0], fake_optical[0], optical[0], epoch, i)
 
 
+#loss during training
+plt.figure(figsize=(10, 5))
+plt.plot(g_losses, label='Generator Loss')
+plt.plot(d_losses, label='Discriminator Loss')
+plt.xlabel('Iteration')
+plt.ylabel('Loss')
+plt.title('Generator and Discriminator Loss During Training')
+plt.legend()
+plt.show()
+
+
+
+
+
+
+
 
 
 
